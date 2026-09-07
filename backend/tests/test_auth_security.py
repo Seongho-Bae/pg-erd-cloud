@@ -207,7 +207,7 @@ async def test_oidc_rejects_header_selected_algorithm(
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "unsupported token algorithm"
+    assert exc_info.value.detail == "invalid token"
 
 
 @pytest.mark.asyncio
@@ -244,7 +244,7 @@ async def test_oidc_decode_rejects_kty_mismatch(
         await auth._decode_verified_oidc_token("ey...fake...")
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "algorithm/key type mismatch"
+    assert exc_info.value.detail == "invalid token"
 
 
 @pytest.mark.asyncio
@@ -307,11 +307,11 @@ async def test_oidc_decode_uses_fixed_algorithm_allowlist(
     [
         (
             {"kid": "key-1", "alg": "RS256", "typ": "nested+jwt"},
-            "unsupported token type",
+            "invalid token",
         ),
         (
             {"kid": "key-1", "alg": "RS256", "cty": "JWT"},
-            "unsupported token content type",
+            "invalid token",
         ),
     ],
 )
@@ -417,7 +417,7 @@ async def test_oidc_requires_jti_claim(
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "token missing jti"
+    assert exc_info.value.detail == "invalid token"
 
 
 @pytest.mark.asyncio
@@ -464,7 +464,7 @@ async def test_oidc_rejects_revoked_jti(
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "token revoked"
+    assert exc_info.value.detail == "invalid token"
 
 
 @pytest.mark.asyncio
@@ -560,7 +560,7 @@ async def test_oidc_decode_rejects_invalid_header(
         await auth._decode_verified_oidc_token("invalid_token")
 
     assert excinfo.value.status_code == 401
-    assert excinfo.value.detail == "invalid token header"
+    assert excinfo.value.detail == "invalid token"
 
 
 @pytest.mark.asyncio
@@ -592,7 +592,8 @@ async def test_oidc_decode_rejects_jwt_decode_error(
         await auth._decode_verified_oidc_token("Bearer token")
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "token verification failed"
+    assert exc_info.value.detail == "invalid token"
+
 
 @pytest.mark.asyncio
 async def test_oidc_rejects_algorithm_key_type_mismatch(
@@ -617,7 +618,9 @@ async def test_oidc_rejects_algorithm_key_type_mismatch(
     monkeypatch.setattr(auth, "is_token_jti_revoked", mock_is_token_revoked2)
 
     def fail_decode(*_: object, **__: object) -> dict:
-        raise AssertionError("jwt.decode must not run for mismatched algorithm/key type")
+        raise AssertionError(
+            "jwt.decode must not run for mismatched algorithm/key type"
+        )
 
     monkeypatch.setattr(auth.jwt, "decode", fail_decode)
 
@@ -625,7 +628,9 @@ async def test_oidc_rejects_algorithm_key_type_mismatch(
         await auth._decode_verified_oidc_token("ey...")
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "algorithm/key type mismatch"
+    assert exc_info.value.detail == "invalid token"
+
+
 @pytest.mark.asyncio
 async def test_oidc_jwks_refresh_rate_limiting(
     monkeypatch: pytest.MonkeyPatch,
